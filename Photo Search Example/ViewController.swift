@@ -12,10 +12,11 @@ import SimpleAuth
 import OAuthSwift
 import SwiftyJSON
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UISearchBarDelegate {
     
     var results = [[String: String]]()
     var urlArray:[String] = []
+    var accessToken: String = ""
     @IBOutlet weak var scrollView:UIScrollView!
     
     
@@ -32,8 +33,9 @@ class ViewController: UIViewController {
             NSURL(string: "Photo-Search-Example://Photo-Search-Example-callback/instagram")!,
             scope: "basic+public_content", state:"INSTAGRAM",
             success: { credential, response, parameters in
-                let accessToken = credential.oauth_token
-                self.getPhotos(accessToken)
+                self.accessToken = credential.oauth_token
+                let recentPhotosUrl = "https://api.instagram.com/v1/users/self/media/recent/?access_token=\(self.accessToken)"
+                self.getPhotos(recentPhotosUrl)
                 print(credential.oauth_token)
    //             self.scrollView.contentSize = CGSizeMake(320, 320 * CGFloat(self.results.count))
  // self.loadImages()
@@ -58,9 +60,9 @@ class ViewController: UIViewController {
 
     } */
     
-    func getPhotos(accessToken: String) -> [[String: String]] {
+    func getPhotos(requestURL: String) -> [[String: String]] {
         let manager = AFHTTPSessionManager()
-        manager.GET("https://api.instagram.com/v1/users/self/media/recent/?access_token=\(accessToken)",
+        manager.GET("\(requestURL)",
                     parameters: nil,
                     progress: nil,
                     success: { (operation: NSURLSessionDataTask,responseObject: AnyObject?) in
@@ -70,7 +72,8 @@ class ViewController: UIViewController {
                                     self.urlArray.append(imageURLString)
                                 }
                             }
-                            self.scrollView.contentSize = CGSizeMake(320, 320 * CGFloat(dataArray.count))
+                            let imageWidth = self.view.frame.width
+                            self.scrollView.contentSize = CGSizeMake(imageWidth, imageWidth * CGFloat(dataArray.count))
                             for i in 0 ..< self.urlArray.count {
                                 let imageData = NSData(contentsOfURL: NSURL(string: self.urlArray[i])!)
                                 if let imageDataUnwrapped = imageData {
@@ -128,6 +131,21 @@ class ViewController: UIViewController {
     print("Parsed = \(results.description)")
 }
 
+    func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+        for subview in self.scrollView.subviews {
+            subview.removeFromSuperview()
+        }
+        searchBar.resignFirstResponder()
+        if let searchText = searchBar.text {
+        let instagramSearchUrl = "https://api.instagram.com/v1/tags/search?q=\(searchText)&access_token=\(accessToken)"
+                    print(instagramSearchUrl)
+                getPhotos(instagramSearchUrl)
+        } else {
+            let recentPhotosUrl = "https://api.instagram.com/v1/users/self/media/recent/?access_token=\(self.accessToken)"
+            print(recentPhotosUrl)
+            getPhotos(recentPhotosUrl)
+        }
+    }
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
